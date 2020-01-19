@@ -1,0 +1,55 @@
+mutationConfigs:
+  - name: "keymaker"
+    annotationNamespace: "keymaker.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    initContainers: ["init-fqdn", "krb5-populator", "keymaker-client"]
+    containers: ["keymaker-client-refresher"]
+    volumes: ["keytabs"]
+    volumeMounts: ["keytabs"]
+    ignoreNamespaces: []
+    whitelistNamespaces: []
+  - name: "madkub"
+    annotationNamespace: "madkub.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    initContainers: ["ca-populator", "madkub-init"]
+    containers: ["madkub-refresher"]
+    volumes: ["ca","clientcert", "servercert", "tokens", "svcaccount"]
+    volumeMounts: ["ca", "clientcert", "servercert", "svcaccount"]
+    ignoreNamespaces: []
+    whitelistNamespaces: []
+  - name: "rsyslog"
+    annotationNamespace: "rsyslog.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    annotationConfig:
+      volumeMounts:
+        - name: "log-volume-mounts"
+          containerRefs: ["rsyslog-sidecar"]
+        - name: "test-volume-mounts"
+          containerRefs: ["rsyslog-sidecar", "rsyslog-test-sidecar"]
+          initContainerRefs: ["rsyslog-init"]
+    initContainers: ["rsyslog-init"]
+    containers: ["rsyslog-sidecar", "rsyslog-test-sidecar"]
+    volumes: ["rsyslog-spool-vol", "rsyslog-conf-tpl", "rsyslog-conf-gen"]
+    volumeMounts: []
+    ignoreNamespaces: []
+    implementsSidecarLifecycle: true
+    whitelistNamespaces: []
+  - name: "vault"
+    annotationNamespace: "vault.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    initContainers: ["vault-agent-init", "consul-template-init"]
+    containers: ["vault-agent", "consul-template"]
+    volumes: ["vault-token", "secrets-volume", "consul-template-config", "aws-iam-credentials"]
+    volumeMounts: []
+    ignoreNamespaces: []
+    whitelistNamespaces: []
+  - name: "simple"
+    annotationNamespace: "simple.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    implementsSidecarLifecycle: true
+    initContainers: []
+    containers: ["simple-sidecar"]
+    volumes: []
+    volumeMounts: []
+    ignoreNamespaces: []
+    whitelistNamespaces: []

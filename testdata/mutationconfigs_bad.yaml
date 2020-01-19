@@ -1,0 +1,10 @@
+mutationConfigs:
+  - name: "keymaker"
+    annotationNamespace: "keymaker.k8s-integration.sfdc.com"
+    annotationTriggerForContainers: "injectKeymaker"
+    initContainers: ["krb5-populator", "keymaker-client123"]
+    containers: ["keymaker-client-refresher"]
+    volumes: ["keytabs"]
+    volumeMounts: ["keytabs"]
+    ignoreNamespaces: []
+    whitelistNamespaces: []

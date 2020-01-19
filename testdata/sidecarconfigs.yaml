@@ -1,0 +1,381 @@
+initContainers:
+  - args:
+    - /bin/cp
+    - /etc/ssl/certs/cacerts.pem
+    - /etc/pki_service/ca/cacerts.pem
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/sam/madkub:122
+    imagePullPolicy: IfNotPresent
+    name: ca-populator
+    volumeMounts:
+    - mountPath: /etc/pki_service/ca
+      name: ca
+  - args:
+    - /sam/madkub-client
+    - --mode=gcpserviceaccount
+    - --sa-secret=/secrets/serviceaccount/key.json
+    - --maddog-endpoint=https://10.168.193.16:8443
+    - --maddog-server-ca=/etc/pki_service/ca/cacerts.pem
+    - --cert-folders=clientcert:/etc/identity
+    - --cert-folders=servercert:/etc/identity
+    - --cert-types=clientcert:client
+    - --cert-types=servercert:server
+    - --ca-folder=/etc/pki_service/ca/
+    env:
+    - name: MADKUB_NODENAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.nodeName
+    - name: MADKUB_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    - name: MADKUB_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/sam/madkub:122
+    imagePullPolicy: IfNotPresent
+    name: madkub-init
+    volumeMounts:
+    - mountPath: /etc/pki_service/ca
+      name: ca
+    - mountPath: /etc/identity/ca
+      name: ca
+    - mountPath: /etc/identity/client
+      name: clientcert
+    - mountPath: /etc/identity/server
+      name: servercert
+    - mountPath: /etc/identity/tokens
+      name: tokens
+    - mountPath: "/secrets/serviceaccount"
+      name: svcaccount
+  - name: init-fqdn
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/keymaker-client:38
+    imagePullPolicy: Always
+    command: ['sh', '-c', 'mkdir -p /etc/keytabs/config; cp /etc/fqdn/fqdn /etc/keytabs/config/']
+    volumeMounts:
+    - mountPath: /etc/keytabs
+      name: keytabs
+    - mountPath: /etc/fqdn
+      name: fqdn
+  - args:
+    - /opt/keymaker-client/set_krb5.sh
+    - DEVMVP.SFDC.NET
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/keymaker-client:38
+    imagePullPolicy: Always
+    name: krb5-populator
+    volumeMounts:
+    - mountPath: /etc/keytabs
+      name: keytabs
+  - args:
+    - /opt/keymaker-client/keymaker-client
+    - --service-name=keymaker
+    - --client-cert=/etc/identity/client/certificates/client.pem
+    - --client-key=/etc/identity/client/keys/client-key.pem
+    - --keytab-owner=sfdc
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/keymaker-client:38
+    imagePullPolicy: Always
+    name: keymaker-client
+    volumeMounts:
+    - mountPath: /etc/identity/client
+      name: clientcert
+    - mountPath: /etc/pki_service/ca
+      name: ca
+    - mountPath: /etc/keytabs
+      name: keytabs
+  - name: rsyslog-init
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/collection-erb-config-gen:19
+    command: ["bash", "-c"]
+    env:
+      - name: LOG_TYPES_JSON
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.annotations['rsyslog.k8s-integration.sfdc.com/log-config']
+      - name: CONF_TPL_ERB
+        value: |
+          <%- require 'json' -%>
+          <%- log_types = JSON.parse(ENV['LOG_TYPES_JSON']) -%>
+          global (
+            workdirectory = "/var/spool/rsyslog"
+            maxMessageSize = "15k"
+          )
+          module(load = "imfile" mode="polling" PollingInterval="5")
+          module(load = "omstdout")
+          template(name = "outfmt" type="list") {
+            constant(value="{\"SIDECAR\": \"1\"")
+            constant(value=",")
+            property(name="msg" outname="msg" format="jsonf")
+            constant(value=",")
+            property(name="$!path" outname="path" format="jsonfr")
+            constant(value=",")
+            property(name="$!source_type" outname="st" format="jsonfr")
+            constant(value="}\n")
+          }
+          <%# Reusable ruleset to output to stdout %>
+          ruleset(name="ruleset_output" ) {
+            action(type="omstdout" template="outfmt")
+          }
+          
+          <% log_types.each do |lt| -%>
+          <% lt["paths"].each do |path| -%>
+          input(
+              type="imfile"
+              File="<%= path %>"
+              PersistStateInterval="50000"
+          <%- if lt["multiline_option"] == 'MULTILINE_OFF' -%>
+              readMode="0"
+          <%- elsif lt["multiline_option"] == 'INDENTED' -%>
+              readMode="2"
+          <%- elsif lt["multiline_option"] == 'PARAGRAPH' -%>
+              readMode="1"
+          <%- else -%>
+              startmsg.regex="<%= lt["start_regex"] %>"
+              readTimeout="5"
+          <%- end -%>
+              Tag="<%= lt["source_type"] %>"
+              ruleset="ruleset_<%= lt["id"] %>"
+              addmetadata="on"
+              escapelf="off"
+              discardTruncatedMsg="on"
+          <%- if lt["truncatable"] -%>
+              reopenOnTruncate="on"
+          <%- end -%>
+          )
+          ruleset(name="<%="ruleset_#{lt['id']}" %>" ) {
+              set $!path = "<%= path %>";
+              set $!source_type = "<%= lt["source_type"] %>";
+              call ruleset_output
+          }
+          <%- end # path-%>
+          <%- end # config -%>
+    args:
+      - 'echo -e "${CONF_TPL_ERB}" > /templates/rsyslog.conf.erb &&
+        /app/config_gen.rb -t /templates/rsyslog.conf.erb -o /generated/rsyslog.conf'
+    volumeMounts:
+      - name: rsyslog-conf-tpl
+        mountPath: /templates
+      - name: rsyslog-conf-gen
+        mountPath: /generated
+  - args:
+    - agent
+    - --
+    - -config=/vault/vault-agent-once.hcl
+    env:
+      - name: VAULT_ADDR
+        value: https://vault.vault.rddev.aws.sfdc.cl
+      - name: VAULT_SKIP_VERIFY
+        value: "true"
+      - name: AWS_CREDENTIAL_PROFILES_FILE # Used by the Java SDK.
+        value: /meta/aws-iam/credentials
+      - name: AWS_SHARED_CREDENTIALS_FILE # Used by the golang SDK.
+        value: /meta/aws-iam/credentials
+      - name: SKIP_CHOWN
+        value: "true"
+      - name: SKIP_SETCAP
+        value: "true"
+    image: 791719295754.dkr.ecr.us-east-2.amazonaws.com/dva/vault:25-278727b33809917ec0ec40b501176ad3e81757b8
+    name: vault-agent-init
+    volumeMounts:
+      - mountPath: /vault-token
+        name: vault-token
+      - mountPath: /meta/aws-iam
+        name: aws-iam-credentials
+        readOnly: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  - args:
+      - --
+      - consul-template
+      - -config=/config/consul-template-config.hcl
+      - true
+    env:
+      - name: VAULT_SKIP_VERIFY
+        value: "true"
+      - name: VAULT_TOKEN_FILE
+        value: "/vault-token/.vault-token"
+    image: 791719295754.dkr.ecr.us-east-2.amazonaws.com/dva/consul-template:5-4599880a1446ef527a7b348b2c3a3ee79d04490e
+    name: consul-template-init
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    volumeMounts:
+      - mountPath: /config
+        name: consul-template-config
+      - mountPath: /vault-token
+        name: vault-token
+        # Mounted read-only: the vault-agent container is responsible for updating this.
+        readOnly: true
+      - mountPath: /secrets
+        name: secrets-volume
+volumes:
+  - emptyDir:
+      medium: Memory
+    name: ca
+  - emptyDir:
+      medium: Memory
+    name: clientcert
+  - emptyDir:
+      medium: Memory
+    name: servercert
+  - emptyDir:
+      medium: Memory
+    name: tokens
+  - emptyDir:
+      medium: Memory
+    name: keytabs
+  - name: svcaccount
+    secret:
+      # The secretName "svcaccount" gets replaced by data from annotation "maddog.salesforce.com/svcaccount-secret"
+     secretName: svcaccount
+  - name: rsyslog-spool-vol
+    emptyDir: {}
+  - name: rsyslog-conf-tpl
+    emptyDir: {}
+  - name: rsyslog-conf-gen
+    emptyDir: {}
+  - name: vault-token
+    emptyDir:
+      medium: Memory
+  - name: consul-template-config
+    configMap:
+      name: test-consul-template
+  - name: secrets-volume
+    emptyDir:
+      medium: Memory
+  - name: aws-iam-credentials
+    secret:
+      secretName: aws-iam-{% .Spec.ServiceAccountName %}
+volumeMounts:
+  - mountPath: /etc/pki_service/ca
+    name: ca
+  - mountPath: /etc/identity/ca
+    name: ca
+  - mountPath: /etc/identity/client
+    name: clientcert
+  - mountPath: /etc/identity/server
+    name: servercert
+  - mountPath: /etc/keytabs
+    name: keytabs
+  - mountPath: "/secrets/serviceaccount"
+    name: svcaccount
+containers:
+  - name: simple-sidecar
+  - name: rsyslog-sidecar
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/sfdc_rsyslog_gcp:17
+    volumeMounts:
+      - name: rsyslog-spool-vol
+        mountPath: /var/spool/rsyslog
+      - name: rsyslog-conf-gen
+        subPath: rsyslog.conf
+        mountPath: /etc/rsyslog.conf
+  - name: rsyslog-test-sidecar
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/sfdc_rsyslog_gcp:17
+  - args:
+    - "/sam/madkub-client"
+    - "--mode"
+    - gcpserviceaccount
+    - "--sa-secret"
+    - "/secrets/serviceaccount/key.json"
+    - "--maddog-endpoint"
+    - https://10.168.193.16:8443
+    - "--maddog-server-ca"
+    - "/etc/pki_service/ca/cacerts.pem"
+    - "--cert-folders"
+    - clientcert:/etc/identity
+    - "--cert-folders"
+    - servercert:/etc/identity
+    - "--cert-types"
+    - clientcert:client
+    - "--cert-types"
+    - servercert:server
+    - "--refresher"
+    - "--run-init-for-refresher-mode"
+    - "--ca-folder"
+    - "/etc/pki_service/ca/"
+    env:
+    - name: MADKUB_NODENAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.nodeName
+    - name: MADKUB_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    - name: MADKUB_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    image: gcr.io/gsf-mgmt-devmvp-spinnaker/dva/sam/madkub:122
+    name: madkub-refresher
+    resources: {}
+    volumeMounts:
+    - mountPath: /etc/pki_service/ca
+      name: ca
+    - mountPath: /etc/identity/ca
+      name: ca
+    - mountPath: /etc/identity/client
+      name: clientcert
+    - mountPath: /etc/identity/server
+      name: servercert
+    - mountPath: "/secrets/serviceaccount"
+      name: svcaccount
+  - name: vault-agent
+    args:
+      - agent
+      - --
+      - -config=/vault/vault-agent.hcl
+    env:
+      - name: VAULT_ROLE
+        value: {% index .Annotations "vault.k8s-integration.sfdc.com/role" %}
+    image: 791719295754.dkr.ecr.us-east-2.amazonaws.com/dva/vault:25-278727b33809917ec0ec40b501176ad3e81757b8
+    volumeMounts:
+      - mountPath: /vault-token
+        name: vault-token
+      - mountPath: /meta/aws-iam
+        name: aws-iam-credentials
+        readOnly: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      capabilities:
+        add: ["IPC_LOCK"]
+  - name: consul-template
+    args:
+      - --
+      - consul-template
+      - -config=/config/consul-template-config.hcl
+      - false
+    env:
+      - name: VAULT_SKIP_VERIFY
+        value: "true"
+      - name: VAULT_TOKEN_FILE
+        value: "/vault-token/.vault-token"
+    image: 791719295754.dkr.ecr.us-east-2.amazonaws.com/dva/consul-template:5-4599880a1446ef527a7b348b2c3a3ee79d04490e
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    volumeMounts:
+      - mountPath: /config
+        name: consul-template-config
+      - mountPath: /vault-token
+        name: vault-token
+        # Mounted read-only: the vault-agent container is responsible for updating this.
+        readOnly: true
+      - mountPath: /secrets
+        name: secrets-volume
