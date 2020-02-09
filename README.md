@@ -1,5 +1,17 @@
 # A Generic framework for Writing Mutating Webhook Admission Controllers.
 
+Many kubernetes users have started using mutating admission controllers to inject sidecars.
+These sidecars are used for different purposes like logging, service mesh, monitoring, getting
+certificates, secret decryption, etc. Its most likely that all of these functions are being
+maintained by different teams. Its also most likely that each of these teams is writing the 
+same code for mutating admission controllers, same unit tests and similar helm charts. In order
+to avoid duplication and improve collaboration, we are introducing this framework.
+
+Generic Sidecar Injector is a framework that allows you to inject sidecars(aka containers), 
+initcontainers, volumes and volume mounts in a very config driven way that will solve most 
+sidecar injection needs without requiring code change.
+
+
 ## How to run tests
     make 
     
@@ -7,14 +19,14 @@
     make docker
 
 
-## Usage
+## Documentation
 
 ### Configuration
 
 The framework divides the configuration into two parts.
 
-1. What needs to be injected , aka the sidecars
-2. When the injection should be performed, aka the mutation configs
+1. What needs to be injected , aka the sidecar configuration
+2. A list of mutations, aka the mutation configuration
 
 
 The mutating webhook takes the following arguments:-
@@ -53,8 +65,9 @@ volumes:
 #### Mutation Configs
 
 --mutation-config-file is a list of mutations that need to be performed by the Mutating Webhook. All the 
-mutations should belong to the same team. We should not add mutations for things that belong to different 
-teams.
+mutations belong to the same team. Each mutation consists of a trigger in the form of an annotation and
+a list of injections performed in response to the annotation trigger.
+
 
 Its in the following format:-
 
@@ -84,7 +97,6 @@ the above  example, the mutating webhook only looks at the annotations that begi
 `annotationTrigger`:  The injection is only triggered if the kPod has the following annotation  
 rsyslog.k8s-integration.sfdc.com/inject present
 
-
 `initContainers`:  This is a list of init containers to inject when the annotation is present on 
 the pod. The name of the initContainers should match an init container in the -sidecar-config-file
 
@@ -96,8 +108,11 @@ of the volumes should match a volume in the -sidecar-config-file
 
 `annotationConfig`: This is a way of dynamically injecting configuration in the injected containers 
 which is only known at the pod creation time. Currently it only supports injecting volumeMounts into the injected containers.
+This will soon be DEPRECATED.
 
 #### Dynamic Configuration of Injected Containers
+
+DEPRECATED, will soon be removed, since the same functionality can be achieved by templating.
 
 ```
 annotationConfig:
