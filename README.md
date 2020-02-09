@@ -1,6 +1,6 @@
 # A Generic framework for Writing Mutating Webhook Admission Controllers.
 
-## How to build & test
+## How to run tests
     make 
     
 ## Build a docker image
