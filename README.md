@@ -1,5 +1,9 @@
 # A Generic framework for Writing Mutating Webhook Admission Controllers.
 
+
+[![Build Status](https://travis-ci.org/salesforce/generic-sidecar-injector.svg?branch=master)](https://travis-ci.org/salesforce/generic-sidecar-injector)
+[![Go Report Card](https://goreportcard.com/badge/github.com/salesforce/generic-sidecar-injector)](https://goreportcard.com/report/github.com/salesforce/generic-sidecar-injector)
+
 Many kubernetes users have started using mutating admission controllers to inject sidecars.
 These sidecars are used for different purposes like logging, service mesh, monitoring, getting
 certificates, secret decryption, etc. Its most likely that all of these functions are being
