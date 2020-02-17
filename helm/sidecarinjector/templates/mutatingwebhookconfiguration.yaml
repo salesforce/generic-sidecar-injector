@@ -1,0 +1,34 @@
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ .Values.appname }}-webhook-cfg
+  namespace: {{ .Values.namespace }}
+webhooks:
+  - clientConfig:
+      caBundle: {{ .Values.caBundle }} 
+      service:
+        name: {{ .Values.appname }}
+        namespace: {{ .Values.namespace }}
+        path: /mutate
+    failurePolicy: Fail
+    name: {{ .Values.appname }}.sfdc.internal
+    namespaceSelector:
+      matchExpressions:
+        - key: kaas-injection
+          operator: NotIn
+          values:
+            - {{ .Values.enablekaas }}
+        - key: kaas-injection
+          operator: In
+          values:
+            - {{ .Values.enablesidecar }}
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - pods
