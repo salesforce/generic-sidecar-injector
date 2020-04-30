@@ -11,6 +11,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
+	"github.com/salesforce/generic-sidecar-injector/pkg/metrics"
 )
 
 // WebhookConfig is the configuration parameters for the madkubinjectionwebhook
@@ -24,6 +25,7 @@ type WebhookConfig struct {
 	MutationConfigFile string `long:"mutation-config-file" description:"File containing the mutation configuration"`
 	LogLevel           string `short:"v" long:"log-level" default:"0" description:"Logging level"`
 	Environment        string `short:"e" long:"environment" default:"prod" description:"Environment we are running. local or prod"`
+	BuildInfoLabels    string `long:"build-info-labels" required:"false" description:"Additional build info metric labels"`
 }
 
 // NewWebhookConfig is a constructor for WebhookConfig
@@ -45,6 +47,9 @@ func parse() (*WebhookConfig, error) {
 		glog.Errorf("api=Parse, err=%v", err)
 		return nil, err
 	}
+
+	// Emit build info metric
+	metrics.WebhookBuildInfo(c.BuildInfoLabels)
 
 	return c, nil
 }
