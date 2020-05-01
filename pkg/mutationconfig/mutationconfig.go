@@ -21,17 +21,18 @@ type MutationConfigs struct {
 
 // MutationConfig encapsulates a single mutation config
 type MutationConfig struct {
-	Name                       string           `yaml:"name"`
-	AnnotationNamespace        string           `yaml:"annotationNamespace"`
-	AnnotationTrigger          string           `yaml:"annotationTrigger"`
-	AnnotationConfig           annotationConfig `yaml:"annotationConfig,flow"`
-	InitContainers             []string         `yaml:"initContainers,flow"`
-	Containers                 []string         `yaml:"containers,flow"`
-	Volumes                    []string         `yaml:"volumes,flow"`
-	VolumeMounts               []string         `yaml:"volumeMounts,flow"`
-	IgnoreNamespaces           []string         `yaml:"ignoreNamespaces,flow"`
-	WhitelistNamespaces        []string         `yaml:"whitelistNamespaces,flow"`
-	ImplementsSidecarLifecycle bool             `yaml:"implementsSidecarLifecycle,omitempty,flow"`
+	Name                                  string           `yaml:"name"`
+	AnnotationNamespace                   string           `yaml:"annotationNamespace"`
+	AnnotationTrigger                     string           `yaml:"annotationTrigger"`
+	AnnotationConfig                      annotationConfig `yaml:"annotationConfig,flow"`
+	InitContainersBeforePodInitContainers []string         `yaml:"initContainersBeforePodInitContainers,omitempty,flow"`
+	InitContainers                        []string         `yaml:"initContainers,flow"`
+	Containers                            []string         `yaml:"containers,flow"`
+	Volumes                               []string         `yaml:"volumes,flow"`
+	VolumeMounts                          []string         `yaml:"volumeMounts,flow"`
+	IgnoreNamespaces                      []string         `yaml:"ignoreNamespaces,flow"`
+	WhitelistNamespaces                   []string         `yaml:"whitelistNamespaces,flow"`
+	ImplementsSidecarLifecycle            bool             `yaml:"implementsSidecarLifecycle,omitempty,flow"`
 }
 
 type annotationConfig struct {

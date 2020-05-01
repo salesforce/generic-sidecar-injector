@@ -53,3 +53,13 @@ mutationConfigs:
     volumeMounts: []
     ignoreNamespaces: []
     whitelistNamespaces: []
+  - name: "vaultReverse"
+    annotationNamespace: "vaultReverse.k8s-integration.sfdc.com"
+    annotationTrigger: "inject"
+    initContainersBeforePodInitContainers: ["consul-template-init"]
+    initContainers: ["vault-agent-init", "consul-template-init"]
+    containers: ["vault-agent", "consul-template"]
+    volumes: ["vault-token", "secrets-volume", "consul-template-config", "aws-iam-credentials"]
+    volumeMounts: ["secrets-volume"]
+    ignoreNamespaces: []
+    whitelistNamespaces: []

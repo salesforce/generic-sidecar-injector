@@ -60,7 +60,7 @@ func TestLoadConfig(t *testing.T) {
 	assert.Len(t, s.InitContainers, 8)
 	assert.Len(t, s.Volumes, 13)
 	assert.Len(t, s.Containers, 6)
-	assert.Len(t, s.VolumeMounts, 6)
+	assert.Len(t, s.VolumeMounts, 7)
 }
 
 func TestNewPerMutationConfig(t *testing.T) {
