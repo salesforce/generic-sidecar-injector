@@ -26,7 +26,7 @@ var (
 	gitTag                 string
 	webhookInjectionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: ":",
+			Name: "webhook_injections_total",
 			Help: "A count of total mutations/injections into a resource",
 		},
 		[]string{"prefix", "status"},
