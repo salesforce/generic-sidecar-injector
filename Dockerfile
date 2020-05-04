@@ -5,10 +5,13 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY cmd ./cmd
+COPY . ./
 COPY pkg ./pkg
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s" -installsuffix cgo -o sidecarinjector ./cmd/sidecarinjector
+RUN GIT_HASH=$(git rev-parse --short HEAD) && GIT_TAG=$(git tag | tail -1) && \
+    CGO_ENABLED=0 && GOOS=linux && GOARCH=amd64 && \
+    echo "GIT_HASH=$GIT_HASH" && echo "GIT_TAG=$GIT_TAG" && \
+    go build -ldflags  "-X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitHash=$GIT_HASH' -X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitTag=$GIT_TAG' -s" -installsuffix cgo -o sidecarinjector ./cmd/sidecarinjector
 
 FROM gcr.io/distroless/base
 COPY --from=build /sidecarinjector/sidecarinjector /sidecarinjector

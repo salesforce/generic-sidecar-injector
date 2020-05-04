@@ -9,6 +9,7 @@ package metrics
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,6 +22,8 @@ const (
 )
 
 var (
+	gitHash                string
+	gitTag                 string
 	webhookInjectionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "webhook_injections_total",
@@ -104,4 +107,38 @@ func GetHTTPMetricHandler(handlerName string, handler http.Handler) http.Handler
 // CountInjection increments the webhookInjectionsTotal metric with the given name and status labels
 func CountInjection(prefix, status string) {
 	webhookInjectionsTotal.With(prometheus.Labels{"prefix": prefix, "status": status}).Inc()
+}
+
+// WebhookBuildInfo emits a constant metric of 1 with build info tags such as
+// gitHash, gitTag and additional tags passed through `--build-info-metrics` flag
+func WebhookBuildInfo(buildInfoLabels string) {
+	labels, labelMaps := getBuildInfoLabels(buildInfoLabels)
+	webhookBuildInfo := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "webhook_build_info",
+			Help: "A constant metric set to 1 with webhook's build info",
+		},
+		labels,
+	)
+	prometheus.MustRegister(webhookBuildInfo)
+	webhookBuildInfo.With(labelMaps).Set(1)
+}
+
+// getBuildInfoMetrics returns a string slice of all tags, and a map of tag and value pairs as prometheus Labels
+func getBuildInfoLabels(buildInfoLabels string) ([]string, prometheus.Labels) {
+	labels := []string{"gitHash", "gitTag"}
+	m := make(prometheus.Labels)
+
+	m["gitHash"] = gitHash
+	m["gitTag"] = gitTag
+
+	if len(buildInfoLabels) > 0 {
+		customMetrics := strings.Split(buildInfoLabels, ",")
+		for _, c := range customMetrics {
+			p := strings.Split(c, "=")
+			labels = append(labels, p[0])
+			m[p[0]] = p[1]
+		}
+	}
+	return labels, m
 }
