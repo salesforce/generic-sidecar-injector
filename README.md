@@ -84,7 +84,8 @@ mutationConfigs:
       volumeMounts:
         - name: "volume-mounts"
           containerRefs: ["rsyslog-sidecar"]
-    initContainers: ["rsyslog-init"]
+    initContainersBeforePodInitContainers: ["vault-init"]
+    initContainers: ["rsyslog-init", "vault-init"]
     containers: ["rsyslog-sidecar"]
     volumes: ["rsyslog-spool-vol", "rsyslog-conf-tpl", "rsyslog-conf-gen"]
     volumeMounts: []
@@ -100,6 +101,8 @@ the above  example, the mutating webhook only looks at the annotations that begi
 
 `annotationTrigger`:  The injection is only triggered if the kPod has the following annotation  
 rsyslog.k8s-integration.sfdc.com/inject present
+
+`initContainersBeforePodInitContainers`: This is a list of init containers to inject before all other init containers
 
 `initContainers`:  This is a list of init containers to inject when the annotation is present on 
 the pod. The name of the initContainers should match an init container in the -sidecar-config-file

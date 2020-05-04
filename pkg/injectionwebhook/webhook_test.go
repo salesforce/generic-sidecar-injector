@@ -10,6 +10,7 @@ package injectionwebhook
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -126,7 +127,7 @@ func TestMutate(t *testing.T) {
 	data, _ := ioutil.ReadFile(admissionReviewResultFile)
 	assert.Equal(t, string(data), string(admissionResponse.Patch),
 		fmt.Sprintf("## EXPECTED ##\n%s\n\n## ACTUAL ##\n%s", toHumanReadablePatch(data), toHumanReadablePatch(admissionResponse.Patch)))
-	assert.Len(t, statusForMutations, 5)
+	assert.Len(t, statusForMutations, 6)
 	for key, val := range statusForMutations {
 		if strings.HasPrefix(key, "keymaker") || strings.HasPrefix(key, "madkub") {
 			assert.Equal(t, succeededMutation, val)
@@ -541,6 +542,40 @@ func TestMutatePodWithBadVolumeMountAnnotations(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMutateWithInitBeforePodInit(t *testing.T) {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"vaultReverse.k8s-integration.sfdc.com/inject": "enabled",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "container",
+				},
+			},
+			InitContainers: []corev1.Container{
+				{
+					Name: "init-container",
+				},
+			},
+			ServiceAccountName: "secretServiceAccountName",
+			RestartPolicy:      corev1.RestartPolicyAlways,
+		},
+	}
+
+	m := mc.MutationConfigs[5]
+	mutatedPod := doTestMutateAndExpectSuccess(t, pod, []mutationconfig.MutationConfig{m})
+	// consul-template-init is listed before pod's initContainers because of this line in mutationConfig:
+	// initContainersBeforePodInitContainers: ["consul-template-init"]
+	assert.Len(t, mutatedPod.Spec.InitContainers, 3)
+	assert.Equal(t, "consul-template-init", mutatedPod.Spec.InitContainers[0].Name)
+	assert.Equal(t, "init-container", mutatedPod.Spec.InitContainers[1].Name)
+	assert.Equal(t, "vault-agent-init", mutatedPod.Spec.InitContainers[2].Name)
+	assert.Equal(t, m.VolumeMounts[0], mutatedPod.Spec.InitContainers[1].VolumeMounts[0].Name)
+}
+
 func TestHealthz(t *testing.T) {
 	// Arrange
 	wc := &config.WebhookConfig{}
@@ -554,4 +589,25 @@ func TestHealthz(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, http.StatusOK, respWriter.Code)
+}
+
+func TestGetInitContainersBeforeAfterPodInitContainers(t *testing.T) {
+	scf, _ := ioutil.ReadFile(sidecarConfigFile)
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"vaultReverse.k8s-integration.sfdc.com/inject": "enabled",
+			},
+		},
+	}
+	tpl, _ := template.New("test").Delims("{%", "%}").Parse(string(scf))
+	sc, err := sidecarconfig.RenderTemplate(pod, tpl)
+	require.NoError(t, err)
+	m := mc.MutationConfigs[5]
+	s := sc.NewPerMutationConfig(m)
+	initsBefore, initsAfter := getInitContainers(m.InitContainersBeforePodInitContainers, s.InitContainers)
+	assert.Len(t, initsBefore, 1)
+	assert.Len(t, initsAfter, 1)
+	assert.Equal(t, "consul-template-init", initsBefore[0].Name)
+	assert.Equal(t, "vault-agent-init", initsAfter[0].Name)
 }

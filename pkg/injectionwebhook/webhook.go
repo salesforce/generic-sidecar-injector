@@ -441,9 +441,12 @@ func (whsvr *WebhookServer) createPatches(pod *corev1.Pod, mutationConfig *mutat
 		c.VolumeMounts = util.MergeVolumeMounts(c.VolumeMounts, sidecarConfig.VolumeMounts)
 	})...)
 
-	// Add InitContainers, keep the pod consistent with the patch
-	patches = append(patches, addContainers(pod.Spec.InitContainers, sidecarConfig.InitContainers, "/spec/initContainers")...)
-	pod.Spec.InitContainers = append(pod.Spec.InitContainers, sidecarConfig.InitContainers...)
+	// Adding initContainers, keep the pod consistent with the patch
+	initsBefore, initsAfter := getInitContainers(mutationConfig.InitContainersBeforePodInitContainers, sidecarConfig.InitContainers)
+	patches = append(addContainers(pod.Spec.InitContainers, initsBefore, "/spec/initContainers"), patches...)
+	pod.Spec.InitContainers = append(initsBefore, pod.Spec.InitContainers...)
+	patches = append(patches, addContainers(pod.Spec.InitContainers, initsAfter, "/spec/initContainers")...)
+	pod.Spec.InitContainers = append(pod.Spec.InitContainers, initsAfter...)
 
 	// Inject sidecar containers if we're NOT looking at a Pod OR this injection runs sidecars for Jobs
 	// A long-running sidecar Container can cause the Job to never complete,
@@ -508,4 +511,23 @@ func setAllStatusesToFailed(statusForMutations map[string]mutationStatus) {
 			statusForMutations[mutationConfig] = failedMutation
 		}
 	}
+}
+
+func getInitContainers(initsBeforeNames []string, allInits []corev1.Container) ([]corev1.Container, []corev1.Container) {
+	var initsAfter, initsBefore []corev1.Container
+	m := make(map[string]bool)
+	for _, i := range initsBeforeNames {
+		m[i] = true
+	}
+
+	for _, i := range allInits {
+		if m[i.Name] {
+			biCopy := i.DeepCopy()
+			initsBefore = append(initsBefore, *biCopy)
+		} else {
+			aiCopy := i.DeepCopy()
+			initsAfter = append(initsAfter, *aiCopy)
+		}
+	}
+	return initsBefore, initsAfter
 }
