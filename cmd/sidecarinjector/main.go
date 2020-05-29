@@ -36,7 +36,7 @@ const (
 func main() {
 	glog.Info("api=main, reason='Starting generic sidecar injector ...'")
 
-	err := flag.CommandLine.Parse([]string{}) // This line is necessary to make flag think its run.
+	err := flag.CommandLine.Parse([]string{"--logtostderr"}) // This line is necessary to make flag think its run.
 	if err != nil {
 		glog.Errorf("api=main, reason=commandline.Parse, err=%v", err)
 		os.Exit(errorExitCode)
