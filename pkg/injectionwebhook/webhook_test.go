@@ -10,7 +10,6 @@ package injectionwebhook
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -20,9 +19,12 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/salesforce/generic-sidecar-injector/pkg/injectionwebhook/config"
 	"github.com/salesforce/generic-sidecar-injector/pkg/mutationconfig"
 	"github.com/salesforce/generic-sidecar-injector/pkg/sidecarconfig"
+	"github.com/salesforce/generic-sidecar-injector/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +47,7 @@ var (
 )
 
 func init() {
-	sct, _ = template.New(filepath.Base(sidecarConfigFile)).Delims(templateLeftDelimiter, templateRightDelimiter).ParseFiles(sidecarConfigFile)
+	sct, _ = template.New(filepath.Base(sidecarConfigFile)).Delims(util.TemplateLeftDelimiter, util.TemplateRightDelimiter).ParseFiles(sidecarConfigFile)
 	mc, _ = mutationconfig.NewMutatingConfigs(mutationConfigFile)
 
 	data, _ := ioutil.ReadFile(admissionReviewFile)

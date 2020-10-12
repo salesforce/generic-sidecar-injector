@@ -1,16 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "sidecarinjector.fullname" . }}
-  labels:
-{{ include "sidecarinjector.labels" . | indent 4 }}
+  name: {{ .Values.appname }}
+  namespace: {{ .Values.namespace }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
+      targetPort: {{ .Values.service.targetPort }}
   selector:
-    app.kubernetes.io/name: {{ include "sidecarinjector.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ .Values.appname }}
+    app.kubernetes.io/instance: {{ .Values.appname }}

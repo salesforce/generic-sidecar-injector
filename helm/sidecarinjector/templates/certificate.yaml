@@ -1,0 +1,30 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.appname }}-certificate
+  namespace: {{ .Values.namespace }}
+spec:
+  secretName: {{ .Values.appname }}-certificate
+  commonName: {{ .Values.appname }}.{{ .Values.namespace }}.svc
+  dnsNames:
+  - {{ .Values.appname }}.{{ .Values.namespace }}.svc
+  - localhost
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+
+---
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ca-issuer
+  namespace: kube-system
+spec:
+  ca: 
+    secretName: ca-key-pair

@@ -7,7 +7,6 @@ mutationConfigs:
     volumes: ["keytabs"]
     volumeMounts: ["keytabs"]
     ignoreNamespaces: []
-    whitelistNamespaces: []
   - name: "madkub"
     annotationNamespace: "madkub.k8s-integration.sfdc.com"
     annotationTrigger: "inject"
@@ -16,7 +15,6 @@ mutationConfigs:
     volumes: ["ca","clientcert", "servercert", "tokens", "svcaccount"]
     volumeMounts: ["ca", "clientcert", "servercert", "svcaccount"]
     ignoreNamespaces: []
-    whitelistNamespaces: []
   - name: "rsyslog"
     annotationNamespace: "rsyslog.k8s-integration.sfdc.com"
     annotationTrigger: "inject"
@@ -33,7 +31,6 @@ mutationConfigs:
     volumeMounts: []
     ignoreNamespaces: []
     implementsSidecarLifecycle: true
-    whitelistNamespaces: []
   - name: "vault"
     annotationNamespace: "vault.k8s-integration.sfdc.com"
     annotationTrigger: "inject"
@@ -42,7 +39,6 @@ mutationConfigs:
     volumes: ["vault-token", "secrets-volume", "consul-template-config", "aws-iam-credentials"]
     volumeMounts: []
     ignoreNamespaces: []
-    whitelistNamespaces: []
   - name: "simple"
     annotationNamespace: "simple.k8s-integration.sfdc.com"
     annotationTrigger: "inject"
@@ -52,7 +48,6 @@ mutationConfigs:
     volumes: []
     volumeMounts: []
     ignoreNamespaces: []
-    whitelistNamespaces: []
   - name: "vaultReverse"
     annotationNamespace: "vaultReverse.k8s-integration.sfdc.com"
     annotationTrigger: "inject"
@@ -62,4 +57,3 @@ mutationConfigs:
     volumes: ["vault-token", "secrets-volume", "consul-template-config", "aws-iam-credentials"]
     volumeMounts: ["secrets-volume"]
     ignoreNamespaces: []
-    whitelistNamespaces: []

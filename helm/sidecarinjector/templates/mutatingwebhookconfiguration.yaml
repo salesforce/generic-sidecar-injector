@@ -4,9 +4,10 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: {{ .Values.appname }}-webhook-cfg
   namespace: {{ .Values.namespace }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ .Values.appname }}-certificate
 webhooks:
   - clientConfig:
-      caBundle: {{ .Values.caBundle }} 
       service:
         name: {{ .Values.appname }}
         namespace: {{ .Values.namespace }}
@@ -15,14 +16,9 @@ webhooks:
     name: {{ .Values.appname }}.sfdc.internal
     namespaceSelector:
       matchExpressions:
-        - key: kaas-injection
+        - key: sidecar-injection
           operator: NotIn
-          values:
-            - {{ .Values.enablekaas }}
-        - key: kaas-injection
-          operator: In
-          values:
-            - {{ .Values.enablesidecar }}
+          values: ["disabled"]
     rules:
       - apiGroups:
           - ""
