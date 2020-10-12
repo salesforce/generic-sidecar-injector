@@ -20,6 +20,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/salesforce/generic-sidecar-injector/pkg/injectionwebhook"
 	"github.com/salesforce/generic-sidecar-injector/pkg/injectionwebhook/config"
+	"github.com/salesforce/generic-sidecar-injector/pkg/metrics"
 	"github.com/salesforce/generic-sidecar-injector/pkg/mutationconfig"
 	"github.com/salesforce/generic-sidecar-injector/pkg/sidecarconfig"
 	"github.com/salesforce/generic-sidecar-injector/pkg/util"
@@ -27,20 +28,14 @@ import (
 )
 
 const (
-	successExitCode        = 0
-	errorExitCode          = 1
-	templateLeftDelimiter  = "{%"
-	templateRightDelimiter = "%}"
+	successExitCode = 0
+	errorExitCode   = 1
 )
 
 func main() {
-	glog.Info("api=main, reason='Starting generic sidecar injector ...'")
-
-	err := flag.CommandLine.Parse([]string{}) // This line is necessary to make flag think its run.
-	if err != nil {
-		glog.Errorf("api=main, reason=commandline.Parse, err=%v", err)
-		os.Exit(errorExitCode)
-	}
+	// This line is necessary to make glog happy
+	// TODO: move away from glog
+	flag.CommandLine.Parse([]string{})
 
 	webhookConfig, err := config.NewWebhookConfig()
 	if err != nil {
@@ -51,22 +46,18 @@ func main() {
 		os.Exit(successExitCode)
 	}
 
-	err = flag.Set("alsologtostderr", "true")
-	if err != nil {
-		panic(err)
-	}
-
-	err = flag.Set("v", webhookConfig.LogLevel)
-	if err != nil {
-		panic(err)
+	if webhookConfig.BuildInfoLabels != "" {
+		metrics.WebhookBuildInfo(webhookConfig.BuildInfoLabels)
 	}
 
 	// Sanity check for templateFile. Eligible fields https://salesforce.quip.com/pEW6A6AtpwRc
-	sidecarConfigTemplate, err := template.New(filepath.Base(webhookConfig.SidecarConfigFile)).Delims(templateLeftDelimiter, templateRightDelimiter).ParseFiles(webhookConfig.SidecarConfigFile)
+	// TODO: move above doc to git wiki
+	sidecarConfigTemplate, err := template.New(filepath.Base(webhookConfig.SidecarConfigFile)).Delims(util.TemplateLeftDelimiter, util.TemplateRightDelimiter).ParseFiles(webhookConfig.SidecarConfigFile)
 	if err != nil {
 		glog.Errorf("api=main, reason=template.New, file=%q, err=%v", webhookConfig.SidecarConfigFile, err)
 		os.Exit(errorExitCode)
 	}
+
 	err = sidecarconfig.TemplateSanityCheck(sidecarConfigTemplate)
 	if err != nil {
 		glog.Errorf("api=main, reason=sidecarconfig.TemplateSanityCheck, message=template may contain ineligible fields, err=%v", err)

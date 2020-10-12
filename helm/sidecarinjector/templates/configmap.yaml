@@ -5,46 +5,22 @@ metadata:
   namespace: {{ .Values.namespace }}
 data:
   sidecarconfig.yaml: |
-    initContainers:
-      - args:
-        - /somearg.sh
-        image: {{ .Values.keymakerclient.image }}:{{ .Values.keymakerclient.tag }}
-        imagePullPolicy: {{ .Values.keymakerclient.pullPolicy }}
-        name: init1
-        volumeMounts:
-        - mountPath: /etc/keytabs
-          name: keytabs
-      - args:
-        - /some-client
-        - --service-name=keymaker
-        image {{ .Values.keymakerclient.image }}:{{ .Values.keymakerclient.tag }}
-        imagePullPolicy: {{ .Values.keymakerclient.pullPolicy }}
-        name: init2
-        volumeMounts:
-        - mountPath: /etc/keytabs
-          name: keytabs
     volumes:
       - emptyDir:
           medium: Memory
-        name: keytabs
+        name: tokens
+    volumeMounts:
+      - mountPath: /etc/tokens
+        name: tokens
     containers:
-      - args:
-            - /some-client
-            - --runMode=refresh
-        name: key-refresher
-        image: {{ .Values.keymakerclient.image }}:{{ .Values.keymakerclient.tag }}
-        imagePullPolicy: {{ .Values.keymakerclient.pullPolicy }}
-        volumeMounts:
-        - mountPath: /etc/keytabs
-          name: keytabs
+      - name: simple-sidecar
+        image: registry.hub.docker.com/library/busybox
   mutationconfig.yaml: |
     mutationConfigs:
-      - name: "keymaker"
-        annotationNamespace: "keymaker.k8s-integration.sfdc.com"
+      - name: "simple-mutation-config"
+        annotationNamespace: "simple-sidecar.k8s-integration.sfdc.com"
         annotationTrigger: "inject"
-        initContainers: ["init1", "init2"]
-        containers: ["key-refresher"]
-        volumes: ["keytabs"]
-        volumeMounts: ["keytabs"]
+        containers: ["simple-sidecar"]
+        volumes: ["tokens"]
+        volumeMounts: ["tokens"]
         ignoreNamespaces: []
-        whitelistNamespaces: []

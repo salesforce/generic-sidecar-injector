@@ -1,8 +1,15 @@
-all:
+all: fmt build test install
+
+fmt:
 	go fmt ./...
+
+build:
+	go build -mod=vendor -ldflags "-X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitHash=$(git rev-parse --short HEAD)' -X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitTag=$(git tag | tail -1)'" ./cmd/...
+
+test:
 	go test -mod=vendor -ldflags "-X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitHash=$(git rev-parse --short HEAD)' -X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitTag=$(git tag | tail -1)'" -cover ./...
 
-install: all
+install:
 	go install -mod=vendor -ldflags "-X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitHash=$(git rev-parse --short HEAD)' -X 'github.com/salesforce/generic-sidecar-injector/pkg/metrics.gitTag=$(git tag | tail -1)'" ./cmd/...
 
 linux:

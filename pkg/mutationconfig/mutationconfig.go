@@ -31,7 +31,6 @@ type MutationConfig struct {
 	Volumes                               []string         `yaml:"volumes,flow"`
 	VolumeMounts                          []string         `yaml:"volumeMounts,flow"`
 	IgnoreNamespaces                      []string         `yaml:"ignoreNamespaces,flow"`
-	WhitelistNamespaces                   []string         `yaml:"whitelistNamespaces,flow"`
 	ImplementsSidecarLifecycle            bool             `yaml:"implementsSidecarLifecycle,omitempty,flow"`
 }
 

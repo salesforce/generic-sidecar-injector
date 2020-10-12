@@ -66,13 +66,6 @@ const (
 const (
 	annotationStatusKey      = "status"
 	annotationStatusInjected = "injected"
-	templateLeftDelimiter    = "{%"
-	templateRightDelimiter   = "%}"
-
-	annotationTriggerValueOn      = "on"
-	annotationTriggerValueTrue    = "true"
-	annotationTriggerValueEnable  = "enable"
-	annotationTriggerValueEnabled = "enabled"
 
 	injectionStatusSkipped = "skipped"
 	injectionStatusFailure = "failure"
@@ -126,7 +119,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 		}, nil
 	}
 
-	glog.Infof("api=mutate, message=new AdmissionReview, Kind=%v, Namespace=%v, Name=%v (%v), UID=%v, patchOperation=%v, UserInfo=%v",
+	glog.Errorf("api=mutate, message=new AdmissionReview, Kind=%v, Namespace=%v, Name=%v (%v), UID=%v, patchOperation=%v, UserInfo=%v",
 		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
 
 	sidecarConfig, err := sidecarconfig.RenderTemplate(corev1.Pod{
@@ -147,7 +140,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 	}
 
 	// Workaround: https://github.com/kubernetes/kubernetes/issues/57982
-	//Example: if you add an initContainer to a pod, you have to set fields that ought to have system-applied defaults.
+	// Example: if you add an initContainer to a pod, you have to set fields that ought to have system-applied defaults.
 	whsvr.applyDefaultsWorkaround(sidecarConfig.Containers, sidecarConfig.InitContainers, sidecarConfig.Volumes)
 
 	statusForMutations, patchOperation, err := whsvr.mutatePod(ar.Request.Namespace, &pod, whsvr.mutatingConfig.MutationConfigs, sidecarConfig)
@@ -272,8 +265,8 @@ func (whsvr *WebhookServer) Start() (chan bool, chan bool, error) {
 	if isTLS {
 		err := whsvr.certificateReloader.Start()
 		if err != nil {
-			glog.Errorf("api=Start, reason=certReloader.Start, certFilePath=%q, keyFilePath=%q, err=%v", config.CertFilePath, config.KeyFilePath, err)
-			return nil, nil, errors.Errorf("api=Start, reason=certReloader.Start, certFilePath=%q, keyFilePath=%q, err=%v", config.CertFilePath, config.KeyFilePath, err)
+			glog.Errorf("api=Start, reason=certReloader.Start, certFilePath=%q, keyFilePath=%q, caFilePath=%q, err=%v", config.CertFilePath, config.KeyFilePath, config.CaFilePath, err)
+			return nil, nil, errors.Errorf("api=Start, reason=certReloader.Start, certFilePath=%q, keyFilePath=%q, caFilePath=%q, err=%v", config.CertFilePath, config.KeyFilePath, config.CaFilePath, err)
 		}
 
 		tlsConfig = &tls.Config{
@@ -281,11 +274,11 @@ func (whsvr *WebhookServer) Start() (chan bool, chan bool, error) {
 				return whsvr.certificateReloader.GetCertificate()
 			},
 		}
-		if config.Environment == "local" {
+		if config.CaFilePath != "" {
 			caCert, err := ioutil.ReadFile(config.CaFilePath)
 			if err != nil {
-				glog.Errorf("api=Start, reason=ioutil.ReadFile, localCAFile=%q, err=%v", config.CaFilePath, err)
-				return nil, nil, errors.Errorf("api=Start, reason=ioutil.ReadFile, localCAFile=%q, err=%v", config.CaFilePath, err)
+				glog.Errorf("api=Start, reason=ioutil.ReadFile, caFilePath=%q, err=%v", config.CaFilePath, err)
+				return nil, nil, errors.Errorf("api=Start, reason=ioutil.ReadFile, caFilePath=%q, err=%v", config.CaFilePath, err)
 			}
 			caCertPool := x509.NewCertPool()
 			caCertPool.AppendCertsFromPEM(caCert)
@@ -313,7 +306,7 @@ func (whsvr *WebhookServer) Start() (chan bool, chan bool, error) {
 	go func() {
 		if isTLS {
 			if err := whsvr.tlsServer.ListenAndServeTLS("", ""); err != nil {
-				glog.Errorf("Failed to listen and serve webhook server: %v", err)
+				glog.Errorf("failed to listen and serve webhook server: %v", err)
 			}
 			doneListeningTLSChannel <- true
 		}
@@ -330,7 +323,7 @@ func (whsvr *WebhookServer) Start() (chan bool, chan bool, error) {
 
 	go func() {
 		if err := whsvr.httpServer.ListenAndServe(); err != nil {
-			glog.Errorf("Failed to listen and serve webhook HTTP server: %v", err)
+			glog.Errorf("failed to listen and serve webhook HTTP server: %v", err)
 		}
 		doneListeningHTTPChannel <- true
 	}()
@@ -364,7 +357,7 @@ func (whsvr *WebhookServer) mutationRequired(m *mutationconfig.MutationConfig, r
 	// skip special kubernetes system namespaces
 	for _, namespace := range ignoredSystemNamespaces {
 		if requestNamespace == namespace {
-			glog.Infof("api=mutationRequired, message=skip mutation for pod in system namespace, pod=%s, namespace=%v", pod.GenerateName, requestNamespace)
+			glog.Infof("api=mutationRequired, message=skip mutation for pod in a system namespace, pod=%s, namespace=%v", pod.GenerateName, requestNamespace)
 			return false
 		}
 	}
@@ -379,7 +372,7 @@ func (whsvr *WebhookServer) mutationRequired(m *mutationconfig.MutationConfig, r
 
 	annotations := pod.GetAnnotations()
 	if annotations == nil {
-		glog.Infof("api=mutationRequired, message=skip mutation for pod with no annotations, pod=%s", pod.GenerateName)
+		glog.Infof("api=mutationRequired, message=skip mutation for pod with no annotations, pod=%s, namespace =%s", pod.GenerateName, requestNamespace)
 		return false
 	}
 
@@ -387,13 +380,13 @@ func (whsvr *WebhookServer) mutationRequired(m *mutationconfig.MutationConfig, r
 	triggerKey := util.GetAnnotation(m.AnnotationNamespace, m.AnnotationTrigger)
 	triggerValue, ok := annotations[triggerKey]
 	if !ok {
-		glog.Infof("api=mutationRequired, message=skip mutation for pod with no annotation trigger, pod=%s, annotationTriggerKey=%s", pod.GenerateName, triggerKey)
+		glog.Infof("api=mutationRequired, message=skip mutation for pod with no annotation trigger, pod=%s, namespace=%s, annotationTriggerKey=%s", pod.GenerateName, requestNamespace, triggerKey)
 		return false
 	}
 
 	// if annotation trigger value is not set to true or equivalent
 	if triggerValue != "true" && triggerValue != "enabled" {
-		glog.Infof("api=mutationRequired, message=skip mutation for pod where annotation trigger is not set to true or equivalent, pod=%s, annotationTriggerKey=%s, annotationTriggerValue=%s", pod.GenerateName, triggerKey, triggerValue)
+		glog.Infof("api=mutationRequired, message=skip mutation for pod where annotation trigger is not set to true or equivalent, pod=%s, namespace=%s, annotationTriggerKey=%s, annotationTriggerValue=%s", pod.GenerateName, requestNamespace, triggerKey, triggerValue)
 		return false
 	}
 
@@ -420,8 +413,6 @@ func isShortRunningWorkload(pod *corev1.Pod) bool {
 // Care must be taken to keep the pod consistent with the changes that are made, so that multiple mutations work correctly.
 // If 2 mutations are computed, the 2nd set of patches must start with the result of the 1st.
 func (whsvr *WebhookServer) createPatches(pod *corev1.Pod, mutationConfig *mutationconfig.MutationConfig, sidecarConfig *sidecarconfig.SidecarConfig) []patchOperation {
-	glog.Infof("pod spec %v", pod)
-
 	var patches []patchOperation
 
 	// Add lifecycle defaults if we're looking a Pod running as a Job AND this injection runs sidecars for Jobs
@@ -480,12 +471,12 @@ func (whsvr *WebhookServer) mutatePod(requestNamespace string, pod *corev1.Pod, 
 	statusForMutation := make(map[string]mutationStatus)
 	var patches []patchOperation
 	for _, m := range mutationConfigs {
-		glog.Infof("api=mutatePod, message=processing mutation request, Name=%s", m.Name)
+		glog.Infof("api=mutatePod, message=processing mutation request, mutationConfig=%s", m.Name)
 
 		// determine whether to perform mutation
 		required := whsvr.mutationRequired(&m, requestNamespace, podView)
 		if !required {
-			glog.Infof("api=mutatePod, message=skipping mutation due to policy check, Pod=%s/%s", requestNamespace, podView.GenerateName)
+			glog.Infof("api=mutatePod, message=skipping mutation due to policy check, namespace=%s, pod=%s", requestNamespace, podView.GenerateName)
 			statusForMutation[m.AnnotationNamespace] = skippedMutation
 			continue
 		}

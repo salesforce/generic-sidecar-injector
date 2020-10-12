@@ -1,20 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "sidecarinjector.fullname" . }}
-  labels:
-{{ include "sidecarinjector.labels" . | indent 4 }}
+  name: {{ .Values.appname }}
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "sidecarinjector.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ .Values.appname }}
+      app.kubernetes.io/instance: {{ .Values.appname }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "sidecarinjector.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ .Values.appname }}
+        app.kubernetes.io/instance: {{ .Values.appname }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -27,25 +26,16 @@ spec:
           volumeMounts:
             - mountPath: /etc/webhook/config
               name: webhook-config
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
           args:
-            - /sidecarinjector/sidecarinjector
+            - /sidecarinjector
             - --port={{ .Values.service.targetPort }}
             - --sidecar-config-file=/etc/webhook/config/sidecarconfig.yaml
             - --mutation-config-file=/etc/webhook/config/mutationconfig.yaml
-            - --cert-file-path=/etc/identity/server/certificates/server.pem
-            - --key-file-path=/etc/identity/server/keys/server-key.pem
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort }}
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+            - --cert-file-path=/etc/webhook/certs/tls.crt
+            - --key-file-path=/etc/webhook/certs/tls.key
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
@@ -64,3 +54,6 @@ spec:
         - configMap:
             name: {{ .Values.appname }}-webhook-configmap
           name: webhook-config
+        - name: webhook-certs
+          secret:
+            secretName: {{ .Values.appname }}-certificate

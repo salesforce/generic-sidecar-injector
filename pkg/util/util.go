@@ -13,6 +13,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	// TemplateLeftDelimiter is left delimeter for sidecar config
+	TemplateLeftDelimiter = "{%"
+	// TemplateRightDelimiter is right delimeter for sidecar config
+	TemplateRightDelimiter = "%}"
+)
+
 // GetAnnotation formats a fully qualified annotation  from a prefix and a name.
 // For example, with prefix "annotation.io" and name "key", it returns "annotation.io/key".
 func GetAnnotation(prefix string, name string) string {

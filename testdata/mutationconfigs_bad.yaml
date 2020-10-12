@@ -7,4 +7,3 @@ mutationConfigs:
     volumes: ["keytabs"]
     volumeMounts: ["keytabs"]
     ignoreNamespaces: []
-    whitelistNamespaces: []

@@ -90,7 +90,6 @@ mutationConfigs:
     volumes: ["rsyslog-spool-vol", "rsyslog-conf-tpl", "rsyslog-conf-gen"]
     volumeMounts: []
     ignoreNamespaces: []
-    whitelistNamespaces: []
 
 ```
 
