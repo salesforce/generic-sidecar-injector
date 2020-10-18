@@ -14,7 +14,10 @@ data:
         name: tokens
     containers:
       - name: simple-sidecar
-        image: registry.hub.docker.com/library/busybox
+        image: busybox
+        command: 
+          - sleep
+          - "3600"         
   mutationconfig.yaml: |
     mutationConfigs:
       - name: "simple-mutation-config"

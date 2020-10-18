@@ -6,8 +6,8 @@ replicaCount: 1
 appname: sidecarinjector
 namespace: sidecarinjector
 image:
-  repository: sidecarinjector
-  tag: latest
+  repository: mayankkr/sidecarinjector
+  tag: v1
   pullPolicy: Always
 
 imagePullSecrets: []
