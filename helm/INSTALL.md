@@ -1,40 +1,48 @@
-# Step by Step Instructions to Install and try the example
+# Step by Step Instructions to Install and try the examples
 
 ## Assumptions
-- a kubernetes cluster is available and KUBECONFIG is correct configured
+- a Kubernetes cluster is available and KUBECONFIG is correct configured
 - kubectl cli is installed
-- helm v3 is installed
+- Helm v3 is installed
 
 ## Steps 
 
-### Generate a CA pair
-
-- openssl genrsa -out ca.key 2048
-- export COMMON_NAME=sidecarinjector.sidecarinjector.svc
-- openssl req -x509 -new -nodes -key ca.key -subj "/CN=${COMMON_NAME}" -days 3650 -reqexts v3_req -extensions v3_ca -out ca.crt -config /usr/local/etc/openssl/openssl.cnf
-- kubectl create secret tls ca-key-pair    --cert=ca.crt    --key=ca.key    --namespace=cert-manager
-
-### Install Cert Manager 
-
-- create namespace cert-manager
+### Create a namespace for cert-manager
 
 ```
 kubectl create ns cert-manager
 ```
 
-- Label the namespace so that injection is disabled
+### Generate a CA pair
+
+- generate a keypair using openssl
 
 ```
-kubectl label ns cert-manager sidecar-injection=disabled
+openssl genrsa -out ca.key 2048
+- export COMMON_NAME=sidecarinjector.sidecarinjector.svc
+- openssl req -x509 -new -nodes -key ca.key -subj "/CN=${COMMON_NAME}" -days 3650 -reqexts v3_req -extensions v3_ca -out ca.crt -config /usr/local/etc/openssl/openssl.cnf
+```
+- store the keypair in a Kubernetes secret
+
+```
+kubectl create secret tls ca-key-pair    --cert=ca.crt    --key=ca.key    --namespace=cert-manager
 ```
 
-- Install Cert Manager using Helm
+### Install Cert-Manager 
+
+- Install Cert-Manager using Helm
 
 ```
 helm install   cert-manager jetstack/cert-manager   --namespace cert-manager   --version v1.0.3 --set installCRDs=true
 ```
 
-### Install Sidecar Injector
+### Install Generic Sidecar Injector
+
+- Label the cert-manager namespace so that injection is disabled
+
+```
+kubectl label ns cert-manager sidecar-injection=disabled
+```
 
 - Clone the repo 
 
@@ -42,7 +50,7 @@ helm install   cert-manager jetstack/cert-manager   --namespace cert-manager   -
 git clone git@github.com:salesforce/generic-sidecar-injector.git
 ```
 
-- Install Sidecar injector using Helm
+- Install Generic Sidecar injector using Helm
 
 ```
 helm install helm/sidecarinjector/  --generate-name
@@ -83,4 +91,10 @@ helm delete sidecarinjector-1602990110
 
 ```
 helm --namespace cert-manager delete cert-manager
+```
+
+- delete the busybox pod
+
+```
+kubectl delete pod busybox1
 ```
