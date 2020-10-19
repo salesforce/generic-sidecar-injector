@@ -1,0 +1,35 @@
+apiVersion: v1
+data:
+  mutationconfig.yaml: |
+    mutationConfigs:
+        - name: "mutation-config-1"
+          annotationNamespace: "logging.k8s-integration.sfdc.com"
+          annotationTrigger: "inject"
+          containers: ["logging-sidecar"]
+          volumes: ["aws-iam-credentials"]
+        - name: "mutation-config-2"
+          annotationNamespace: "monitoring.k8s-integration.sfdc.com"
+          annotationTrigger: "inject"
+          containers: ["monitoring-sidecar"]
+          volumes: ["aws-iam-credentials"]
+  sidecarconfig.yaml: |
+    containers:
+        - name: logging-sidecar
+          image: registry.hub.docker.com/library/busybox
+          command: ["/bin/sh"]
+          args: ["-c", "sleep infinity"]
+        - name: monitoring-sidecar
+          image: registry.hub.docker.com/library/busybox
+          command: ["/bin/sh"]
+          args: ["-c", "sleep infinity"]
+          volumeMounts:
+             - mountPath: /etc/aws
+               name: aws-iam-credentials 
+    volumes:
+        - name: aws-iam-credentials
+          secret:
+            secretName: aws-iam-{% index .Annotations "aws.k8s-integration.sfdc.com/iam-creds" %}
+kind: ConfigMap
+metadata:
+  name: sidecarinjector-webhook-configmap
+  namespace: sidecarinjector

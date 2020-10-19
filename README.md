@@ -22,7 +22,6 @@ sidecar injection needs without requiring code change.
 ## Build a docker image
     make docker
 
-
 ## Documentation
 
 ### Configuration
@@ -243,4 +242,3 @@ environment variable comes from an annotation in the pod.
   ### This templated field will come from the pod manifest passed to the mutating webhook controller
   value: {% index .Annotations "vault.k8s-integration.sfdc.com/role" %}
 ```
-

@@ -4,26 +4,5 @@ metadata:
   name: {{ .Values.appname }}-webhook-configmap
   namespace: {{ .Values.namespace }}
 data:
-  sidecarconfig.yaml: |
-    volumes:
-      - emptyDir:
-          medium: Memory
-        name: tokens
-    volumeMounts:
-      - mountPath: /etc/tokens
-        name: tokens
-    containers:
-      - name: simple-sidecar
-        image: busybox
-        command: 
-          - sleep
-          - "3600"         
-  mutationconfig.yaml: |
-    mutationConfigs:
-      - name: "simple-mutation-config"
-        annotationNamespace: "simple-sidecar.k8s-integration.sfdc.com"
-        annotationTrigger: "inject"
-        containers: ["simple-sidecar"]
-        volumes: ["tokens"]
-        volumeMounts: ["tokens"]
-        ignoreNamespaces: []
+  sidecarconfig.yaml: {{ toYaml .Values.sidecarconfig | indent 2 }}
+  mutationconfig.yaml: {{ toYaml .Values.mutationconfig | indent 2 }}
