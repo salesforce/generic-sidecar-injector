@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-demo2
+  namespace: demo
+  annotations: 
+    logging.k8s-integration.sfdc.com/inject: "enabled"
+    monitoring.k8s-integration.sfdc.com/inject: "enabled"
+    aws.k8s-integration.sfdc.com/iam-creds: "demo1"
+spec:
+  serviceAccountName: 
+  containers:
+  - name: pod-demo2
+    image: registry.hub.docker.com/library/busybox
+    command: ["/bin/sh"]
+    args: ["-c", "sleep infinity"]
+    

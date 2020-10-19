@@ -1,0 +1,26 @@
+apiVersion: v1
+data:
+  mutationconfig.yaml: |
+    mutationConfigs:
+        - name: "mutation-config-1"
+          annotationNamespace: "logging.k8s-integration.sfdc.com"
+          annotationTrigger: "inject"
+          containers: ["logging-sidecar"]
+        - name: "mutation-config-2"
+          annotationNamespace: "monitoring.k8s-integration.sfdc.com"
+          annotationTrigger: "inject"
+          containers: ["monitoring-sidecar"]
+  sidecarconfig.yaml: |
+    containers:
+        - name: logging-sidecar
+          image: registry.hub.docker.com/library/busybox
+          command: ["/bin/sh"]
+          args: ["-c", "sleep infinity"]
+        - name: monitoring-sidecar
+          image: registry.hub.docker.com/library/busybox
+          command: ["/bin/sh"]
+          args: ["-c", "sleep infinity"]
+kind: ConfigMap
+metadata:
+  name: sidecarinjector-webhook-configmap
+  namespace: sidecarinjector
