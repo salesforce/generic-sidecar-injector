@@ -8,6 +8,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -34,7 +35,7 @@ const (
 func main() {
 	webhookConfig, err := config.NewWebhookConfig()
 	if err != nil {
-		glog.Errorf("api=main, reason=config.NewWebhookConfig, err=%v", err)
+		fmt.Fprintf(os.Stderr, "api=main, reason=config.NewWebhookConfig, err=%v\n", err)
 		os.Exit(errorExitCode)
 	}
 	if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
