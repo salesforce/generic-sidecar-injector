@@ -142,8 +142,11 @@ func TestRenderTemplate(t *testing.T) {
 }
 
 func TestTemplateSanityCheck(t *testing.T) {
-	goodTpl, _ := template.New("goodTest").Delims("{%", "%}").Parse("volumes:\n- name: test-volume \n  secret: \n   secretName: {% index .Annotations \"test-annotation-key\"  %}-{% .Spec.ServiceAccountName %}")
+	goodTpl, _ := template.New("goodTest").Funcs(SidecarTemplateExtraFuncs()).Delims("{%", "%}").Parse("volumes:\n- name: test-volume \n  secret: \n   secretName: {% index .Annotations \"test-annotation-key\"  %}-{% .Spec.ServiceAccountName %}")
 	assert.NoError(t, TemplateSanityCheck(goodTpl))
-	badTpl, _ := template.New("badTest").Delims("{%", "%}").Parse("volumes:\n- name: test-volume \n  secret: \n   secretName: {% .bad %}")
+	badTpl, _ := template.New("badTest").Funcs(SidecarTemplateExtraFuncs()).Delims("{%", "%}").Parse("volumes:\n- name: test-volume \n  secret: \n   secretName: {% .bad %}")
 	assert.Error(t, TemplateSanityCheck(badTpl))
+
+	yamlTpl, _ := template.New("yamlTest").Funcs(SidecarTemplateExtraFuncs()).Delims("{%", "%}").Parse("volumes:\n- name: test-volume \n  secret: \n   secretName: {% with $yaml := (index .Annotations \"vault.k8s-integration.sfdc.com/config\") | fromYaml -%}{%- $yaml.with.yaml -%}-{%- index $yaml.some 0 -%}{%- end -%}")
+	assert.NoError(t, TemplateSanityCheck(yamlTpl))
 }

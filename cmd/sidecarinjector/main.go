@@ -52,7 +52,11 @@ func main() {
 
 	// Sanity check for templateFile. Eligible fields https://salesforce.quip.com/pEW6A6AtpwRc
 	// TODO: move above doc to git wiki
-	sidecarConfigTemplate, err := template.New(filepath.Base(webhookConfig.SidecarConfigFile)).Delims(util.TemplateLeftDelimiter, util.TemplateRightDelimiter).ParseFiles(webhookConfig.SidecarConfigFile)
+	sidecarConfigTemplate, err :=
+		template.New(filepath.Base(webhookConfig.SidecarConfigFile)).
+			Delims(util.TemplateLeftDelimiter, util.TemplateRightDelimiter).
+			Funcs(sidecarconfig.SidecarTemplateExtraFuncs()).
+			ParseFiles(webhookConfig.SidecarConfigFile)
 	if err != nil {
 		glog.Errorf("api=main, reason=template.New, file=%q, err=%v", webhookConfig.SidecarConfigFile, err)
 		os.Exit(errorExitCode)

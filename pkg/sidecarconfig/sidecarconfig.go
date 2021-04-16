@@ -17,6 +17,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/salesforce/generic-sidecar-injector/pkg/mutationconfig"
+	"github.com/salesforce/generic-sidecar-injector/pkg/templates"
 	"github.com/salesforce/generic-sidecar-injector/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,6 +191,7 @@ func TemplateSanityCheck(sidecarConfigTemplate *template.Template) error {
 				"rsyslog.k8s-integration.sfdc.com/test-volume-mounts": "test",
 				"rsyslog.k8s-integration.sfdc.com/log-volume-mounts":  "test",
 				"vault.k8s-integration.sfdc.com/vaultRole":            "test",
+				"vault.k8s-integration.sfdc.com/config":               "some:\n  - yaml\n  - array\nwith:\n  yaml: object",
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -198,4 +200,10 @@ func TemplateSanityCheck(sidecarConfigTemplate *template.Template) error {
 	}
 	_, err := RenderTemplate(dummyPod, sidecarConfigTemplate)
 	return err
+}
+
+func SidecarTemplateExtraFuncs() template.FuncMap {
+	return template.FuncMap{
+		"fromYaml": templates.FromYAML,
+	}
 }
