@@ -8,6 +8,8 @@
 package config
 
 import (
+	"flag"
+
 	"github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
 )
@@ -37,9 +39,11 @@ func NewWebhookConfig() (*WebhookConfig, error) {
 func parse() (*WebhookConfig, error) {
 	c := &WebhookConfig{}
 	parser := flags.NewParser(c, flags.HelpFlag|flags.PrintErrors|flags.PassDoubleDash|flags.IgnoreUnknown)
-	_, err := parser.Parse()
+	extraArgs, err := parser.Parse()
 	if err != nil {
 		return nil, errors.Errorf("api=parse, err=%v", err)
 	}
+	// Parse any extra args for dependent packages that use "flag" (e.g., glog).
+	flag.CommandLine.Parse(extraArgs)
 	return c, nil
 }
