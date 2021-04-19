@@ -2,3 +2,5 @@
 .idea/
 *.iml
 
+# File generated as part of `make all`
+sidecarinjector
