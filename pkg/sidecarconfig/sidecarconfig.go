@@ -17,6 +17,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/salesforce/generic-sidecar-injector/pkg/mutationconfig"
+	"github.com/salesforce/generic-sidecar-injector/pkg/templates"
 	"github.com/salesforce/generic-sidecar-injector/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,12 +185,20 @@ func RenderTemplate(pod corev1.Pod, sidecarConfigTemplate *template.Template) (*
 
 // TemplateSanityCheck ensures given template has valid templated field
 func TemplateSanityCheck(sidecarConfigTemplate *template.Template) error {
+	const annotationValueAsYaml = `
+some:
+- yaml
+- array
+with:
+  yaml: object`
+
 	dummyPod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"rsyslog.k8s-integration.sfdc.com/test-volume-mounts": "test",
 				"rsyslog.k8s-integration.sfdc.com/log-volume-mounts":  "test",
 				"vault.k8s-integration.sfdc.com/vaultRole":            "test",
+				"vault.k8s-integration.sfdc.com/config":               annotationValueAsYaml,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -198,4 +207,10 @@ func TemplateSanityCheck(sidecarConfigTemplate *template.Template) error {
 	}
 	_, err := RenderTemplate(dummyPod, sidecarConfigTemplate)
 	return err
+}
+
+func SidecarTemplateExtraFuncs() template.FuncMap {
+	return template.FuncMap{
+		"fromYaml": templates.FromYAML,
+	}
 }
