@@ -43,6 +43,13 @@ func TestFromYAML(t *testing.T) {
 			[]interface{}{"hello", map[interface{}]interface{}{}},
 			false,
 		},
+		{
+			"top-level object",
+			`age: "23"
+hello: bar`,
+			map[interface{}]interface{}{"age": "23", "hello": "bar"},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

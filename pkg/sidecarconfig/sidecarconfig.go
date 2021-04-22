@@ -185,13 +185,20 @@ func RenderTemplate(pod corev1.Pod, sidecarConfigTemplate *template.Template) (*
 
 // TemplateSanityCheck ensures given template has valid templated field
 func TemplateSanityCheck(sidecarConfigTemplate *template.Template) error {
+	const annotationValueAsYaml = `
+some:
+- yaml
+- array
+with:
+  yaml: object`
+
 	dummyPod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"rsyslog.k8s-integration.sfdc.com/test-volume-mounts": "test",
 				"rsyslog.k8s-integration.sfdc.com/log-volume-mounts":  "test",
 				"vault.k8s-integration.sfdc.com/vaultRole":            "test",
-				"vault.k8s-integration.sfdc.com/config":               "some:\n  - yaml\n  - array\nwith:\n  yaml: object",
+				"vault.k8s-integration.sfdc.com/config":               annotationValueAsYaml,
 			},
 		},
 		Spec: corev1.PodSpec{
