@@ -57,7 +57,7 @@ type Encoder interface {
 	// Identifiers of two different encoders should be equal if and only if for every input
 	// object it will be encoded to the same representation by both of them.
 	//
-	// Identifier is inteted for use with CacheableObject#CacheEncode method. In order to
+	// Identifier is intended for use with CacheableObject#CacheEncode method. In order to
 	// correctly handle CacheableObject, Encode() method should look similar to below, where
 	// doEncode() is the encoding logic of implemented encoder:
 	//   func (e *MyEncoder) Encode(obj Object, w io.Writer) error {
@@ -153,6 +153,28 @@ type NegotiatedSerializer interface {
 	// DecoderForVersion returns a decoder that ensures objects being read by the provided
 	// serializer are in the provided group version by default.
 	DecoderToVersion(serializer Decoder, gv GroupVersioner) Decoder
+}
+
+// ClientNegotiator handles turning an HTTP content type into the appropriate encoder.
+// Use NewClientNegotiator or NewVersionedClientNegotiator to create this interface from
+// a NegotiatedSerializer.
+type ClientNegotiator interface {
+	// Encoder returns the appropriate encoder for the provided contentType (e.g. application/json)
+	// and any optional mediaType parameters (e.g. pretty=1), or an error. If no serializer is found
+	// a NegotiateError will be returned. The current client implementations consider params to be
+	// optional modifiers to the contentType and will ignore unrecognized parameters.
+	Encoder(contentType string, params map[string]string) (Encoder, error)
+	// Decoder returns the appropriate decoder for the provided contentType (e.g. application/json)
+	// and any optional mediaType parameters (e.g. pretty=1), or an error. If no serializer is found
+	// a NegotiateError will be returned. The current client implementations consider params to be
+	// optional modifiers to the contentType and will ignore unrecognized parameters.
+	Decoder(contentType string, params map[string]string) (Decoder, error)
+	// StreamDecoder returns the appropriate stream decoder for the provided contentType (e.g.
+	// application/json) and any optional mediaType parameters (e.g. pretty=1), or an error. If no
+	// serializer is found a NegotiateError will be returned. The Serializer and Framer will always
+	// be returned if a Decoder is returned. The current client implementations consider params to be
+	// optional modifiers to the contentType and will ignore unrecognized parameters.
+	StreamDecoder(contentType string, params map[string]string) (Decoder, Serializer, Framer, error)
 }
 
 // StorageSerializer is an interface used for obtaining encoders, decoders, and serializers
