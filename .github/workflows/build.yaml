@@ -17,7 +17,7 @@ jobs:
         id: docker_meta
         uses: crazy-max/ghaction-docker-meta@v2.4.0
         with:
-          images: salesforce/generic-sidecar-injector
+          images: mrchypark/generic-sidecar-injector
           tags: |
             type=semver,pattern={{version}}
       - name: Set up QEMU
