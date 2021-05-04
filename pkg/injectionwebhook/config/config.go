@@ -24,6 +24,9 @@ type WebhookConfig struct {
 	SidecarConfigFile  string `long:"sidecar-config-file" required:"true" description:"file containing the sidecar container configuration"`
 	MutationConfigFile string `long:"mutation-config-file" required:"true" description:"file containing the mutation configuration"`
 	BuildInfoLabels    string `long:"build-info-labels" required:"false" description:"additional build info metric labels"`
+
+	// Flag to permit fallback to old, insecure TLS configurations.
+	AllowDeprecatedTLSConfig bool `long:"allow-deprecated-tls-config" required:"false" description:"permits use of deprecated TLS configuration (TLS 1.0/1.1, weak ciphers)"`
 }
 
 // NewWebhookConfig is a constructor for WebhookConfig
