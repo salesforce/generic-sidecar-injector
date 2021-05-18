@@ -122,14 +122,11 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 	glog.Errorf("api=mutate, message=new AdmissionReview, Kind=%v, Namespace=%v, Name=%v (%v), UID=%v, patchOperation=%v, UserInfo=%v",
 		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
 
-	sidecarConfig, err := sidecarconfig.RenderTemplate(corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: pod.Annotations,
-		},
-		Spec: corev1.PodSpec{
-			ServiceAccountName: pod.Spec.ServiceAccountName,
-		},
-	}, whsvr.sidecarConfigTemplate)
+	// the pod might not have its namespace defined since it's still in admission,
+	// let's insert it from the req to expose as much data to templating as possible
+	pod.Namespace = req.Namespace
+
+	sidecarConfig, err := sidecarconfig.RenderTemplate(pod, whsvr.sidecarConfigTemplate)
 	if err != nil {
 		glog.Errorf("api=mutate, reason=sidecarconfig.RenderTemplate, message=failed to render from template, err=%v", err)
 		return &v1beta1.AdmissionResponse{
