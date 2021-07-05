@@ -27,8 +27,8 @@ import (
 	"github.com/salesforce/generic-sidecar-injector/pkg/sidecarconfig"
 	"github.com/salesforce/generic-sidecar-injector/pkg/util"
 
-	"k8s.io/api/admission/v1beta1"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	"k8s.io/api/admission/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +74,7 @@ const (
 
 func init() {
 	// AddToScheme is a global function that registers this API group & version to a scheme
-	_ = admissionregistrationv1beta1.AddToScheme(runtimeScheme)
+	_ = admissionregistrationv1.AddToScheme(runtimeScheme)
 	// defaulting with webhooks:
 	// https://github.com/kubernetes/kubernetes/issues/57982
 	_ = corev1.AddToScheme(runtimeScheme)
@@ -107,12 +107,12 @@ func NewWebhookServer(
 }
 
 // mutate method for mutation webhook
-func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionResponse *v1beta1.AdmissionResponse, statusForMutations map[string]mutationStatus) {
+func (whsvr *WebhookServer) mutate(ar *v1.AdmissionReview) (admissionResponse *v1.AdmissionResponse, statusForMutations map[string]mutationStatus) {
 	req := ar.Request
 	var pod corev1.Pod
 	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
 		glog.Errorf("api=mutate, reason=json.Unmarshal, message=invalid raw object, err=%v", err)
-		return &v1beta1.AdmissionResponse{
+		return &v1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
@@ -132,7 +132,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 	}, whsvr.sidecarConfigTemplate)
 	if err != nil {
 		glog.Errorf("api=mutate, reason=sidecarconfig.RenderTemplate, message=failed to render from template, err=%v", err)
-		return &v1beta1.AdmissionResponse{
+		return &v1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
@@ -148,7 +148,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 		glog.Errorf("api=mutate, reason=whsvr.mutatePod, message=failed to mutate, err=%v", err)
 		setAllStatusesToFailed(statusForMutations)
 
-		return &v1beta1.AdmissionResponse{
+		return &v1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
@@ -159,7 +159,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 	if err != nil {
 		setAllStatusesToFailed(statusForMutations)
 
-		return &v1beta1.AdmissionResponse{
+		return &v1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
@@ -167,11 +167,11 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) (admissionRespon
 	}
 
 	glog.Infof("api=mutate, message=creating new AdmissionResponse, patch=%v\n", string(patchBytes))
-	return &v1beta1.AdmissionResponse{
+	return &v1.AdmissionResponse{
 		Allowed: true,
 		Patch:   patchBytes,
-		PatchType: func() *v1beta1.PatchType {
-			pt := v1beta1.PatchTypeJSONPatch
+		PatchType: func() *v1.PatchType {
+			pt := v1.PatchTypeJSONPatch
 			return &pt
 		}(),
 	}, statusForMutations
@@ -200,13 +200,13 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	glog.Infof("api=serve, message=incoming request, body=%s", body)
-	var admissionResponse *v1beta1.AdmissionResponse
+	var admissionResponse *v1.AdmissionResponse
 	var statusForMutations map[string]mutationStatus
-	ar := v1beta1.AdmissionReview{}
-	_, _, err := deserializer.Decode(body, nil, &ar)
+	ar := v1.AdmissionReview{}
+	_, gvk, err := deserializer.Decode(body, nil, &ar)
 	if err != nil {
 		glog.Errorf("api=serve, reason=deserializer.Decode, message=cannot decode body, err=%v", err)
-		admissionResponse = &v1beta1.AdmissionResponse{
+		admissionResponse = &v1.AdmissionResponse{
 			Result: &metav1.Status{
 				Message: err.Error(),
 			},
@@ -215,9 +215,10 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		admissionResponse, statusForMutations = whsvr.mutate(&ar)
 	}
 
-	admissionReview := v1beta1.AdmissionReview{}
+	admissionReview := v1.AdmissionReview{}
 	if admissionResponse != nil {
 		admissionReview.Response = admissionResponse
+		admissionReview.SetGroupVersionKind(*gvk)
 		if ar.Request != nil {
 			admissionReview.Response.UID = ar.Request.UID
 		}
