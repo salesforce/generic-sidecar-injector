@@ -26,7 +26,7 @@ import (
 	"github.com/salesforce/generic-sidecar-injector/pkg/sidecarconfig"
 	"github.com/salesforce/generic-sidecar-injector/pkg/util"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	ar  v1beta1.AdmissionReview
+	ar  v1.AdmissionReview
 	pod corev1.Pod
 
 	sct *template.Template
