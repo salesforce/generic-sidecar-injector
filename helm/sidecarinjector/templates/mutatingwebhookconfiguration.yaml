@@ -1,5 +1,5 @@
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: {{ .Values.appname }}-webhook-cfg
@@ -28,3 +28,6 @@ webhooks:
           - CREATE
         resources:
           - pods
+    sideEffects: None
+    admissionReviewVersions:
+      - v1

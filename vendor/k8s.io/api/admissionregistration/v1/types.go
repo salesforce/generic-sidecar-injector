@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,11 +86,11 @@ const (
 	Fail FailurePolicyType = "Fail"
 )
 
-// MatchPolicyType specifies the type of match policy
+// MatchPolicyType specifies the type of match policy.
 type MatchPolicyType string
 
 const (
-	// Exact means requests should only be sent to the webhook if they exactly match a given rule
+	// Exact means requests should only be sent to the webhook if they exactly match a given rule.
 	Exact MatchPolicyType = "Exact"
 	// Equivalent means requests should be sent to the webhook if they modify a resource listed in rules via another API group or version.
 	Equivalent MatchPolicyType = "Equivalent"
@@ -116,13 +116,8 @@ const (
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:prerelease-lifecycle-gen:introduced=1.9
-// +k8s:prerelease-lifecycle-gen:deprecated=1.16
-// +k8s:prerelease-lifecycle-gen:removed=1.22
-// +k8s:prerelease-lifecycle-gen:replacement=admissionregistration.k8s.io,v1,ValidatingWebhookConfiguration
 
 // ValidatingWebhookConfiguration describes the configuration of and admission webhook that accept or reject and object without changing it.
-// Deprecated in v1.16, planned for removal in v1.19. Use admissionregistration.k8s.io/v1 ValidatingWebhookConfiguration instead.
 type ValidatingWebhookConfiguration struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object metadata; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
@@ -136,10 +131,6 @@ type ValidatingWebhookConfiguration struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:prerelease-lifecycle-gen:introduced=1.9
-// +k8s:prerelease-lifecycle-gen:deprecated=1.16
-// +k8s:prerelease-lifecycle-gen:removed=1.22
-// +k8s:prerelease-lifecycle-gen:replacement=admissionregistration.k8s.io,v1,ValidatingWebhookConfigurationList
 
 // ValidatingWebhookConfigurationList is a list of ValidatingWebhookConfiguration.
 type ValidatingWebhookConfigurationList struct {
@@ -155,13 +146,8 @@ type ValidatingWebhookConfigurationList struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:prerelease-lifecycle-gen:introduced=1.9
-// +k8s:prerelease-lifecycle-gen:deprecated=1.16
-// +k8s:prerelease-lifecycle-gen:removed=1.22
-// +k8s:prerelease-lifecycle-gen:replacement=admissionregistration.k8s.io,v1,MutatingWebhookConfiguration
 
 // MutatingWebhookConfiguration describes the configuration of and admission webhook that accept or reject and may change the object.
-// Deprecated in v1.16, planned for removal in v1.19. Use admissionregistration.k8s.io/v1 MutatingWebhookConfiguration instead.
 type MutatingWebhookConfiguration struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object metadata; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
@@ -175,10 +161,6 @@ type MutatingWebhookConfiguration struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:prerelease-lifecycle-gen:introduced=1.9
-// +k8s:prerelease-lifecycle-gen:deprecated=1.16
-// +k8s:prerelease-lifecycle-gen:removed=1.22
-// +k8s:prerelease-lifecycle-gen:replacement=admissionregistration.k8s.io,v1,MutatingWebhookConfigurationList
 
 // MutatingWebhookConfigurationList is a list of MutatingWebhookConfiguration.
 type MutatingWebhookConfigurationList struct {
@@ -213,7 +195,7 @@ type ValidatingWebhook struct {
 	Rules []RuleWithOperations `json:"rules,omitempty" protobuf:"bytes,3,rep,name=rules"`
 
 	// FailurePolicy defines how unrecognized errors from the admission endpoint are handled -
-	// allowed values are Ignore or Fail. Defaults to Ignore.
+	// allowed values are Ignore or Fail. Defaults to Fail.
 	// +optional
 	FailurePolicy *FailurePolicyType `json:"failurePolicy,omitempty" protobuf:"bytes,4,opt,name=failurePolicy,casttype=FailurePolicyType"`
 
@@ -230,7 +212,7 @@ type ValidatingWebhook struct {
 	// and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,
 	// a request to apps/v1beta1 or extensions/v1beta1 would be converted to apps/v1 and sent to the webhook.
 	//
-	// Defaults to "Exact"
+	// Defaults to "Equivalent"
 	// +optional
 	MatchPolicy *MatchPolicyType `json:"matchPolicy,omitempty" protobuf:"bytes,9,opt,name=matchPolicy,casttype=MatchPolicyType"`
 
@@ -295,19 +277,18 @@ type ValidatingWebhook struct {
 	ObjectSelector *metav1.LabelSelector `json:"objectSelector,omitempty" protobuf:"bytes,10,opt,name=objectSelector"`
 
 	// SideEffects states whether this webhook has side effects.
-	// Acceptable values are: Unknown, None, Some, NoneOnDryRun
+	// Acceptable values are: None, NoneOnDryRun (webhooks created via v1beta1 may also specify Some or Unknown).
 	// Webhooks with side effects MUST implement a reconciliation system, since a request may be
 	// rejected by a future step in the admission chain and the side effects therefore need to be undone.
 	// Requests with the dryRun attribute will be auto-rejected if they match a webhook with
-	// sideEffects == Unknown or Some. Defaults to Unknown.
-	// +optional
-	SideEffects *SideEffectClass `json:"sideEffects,omitempty" protobuf:"bytes,6,opt,name=sideEffects,casttype=SideEffectClass"`
+	// sideEffects == Unknown or Some.
+	SideEffects *SideEffectClass `json:"sideEffects" protobuf:"bytes,6,opt,name=sideEffects,casttype=SideEffectClass"`
 
 	// TimeoutSeconds specifies the timeout for this webhook. After the timeout passes,
 	// the webhook call will be ignored or the API call will fail based on the
 	// failure policy.
 	// The timeout value must be between 1 and 30 seconds.
-	// Default to 30 seconds.
+	// Default to 10 seconds.
 	// +optional
 	TimeoutSeconds *int32 `json:"timeoutSeconds,omitempty" protobuf:"varint,7,opt,name=timeoutSeconds"`
 
@@ -318,9 +299,7 @@ type ValidatingWebhook struct {
 	// If a persisted webhook configuration specifies allowed versions and does not
 	// include any versions known to the API Server, calls to the webhook will fail
 	// and be subject to the failure policy.
-	// Default to `['v1beta1']`.
-	// +optional
-	AdmissionReviewVersions []string `json:"admissionReviewVersions,omitempty" protobuf:"bytes,8,rep,name=admissionReviewVersions"`
+	AdmissionReviewVersions []string `json:"admissionReviewVersions" protobuf:"bytes,8,rep,name=admissionReviewVersions"`
 }
 
 // MutatingWebhook describes an admission webhook and the resources and operations it applies to.
@@ -345,7 +324,7 @@ type MutatingWebhook struct {
 	Rules []RuleWithOperations `json:"rules,omitempty" protobuf:"bytes,3,rep,name=rules"`
 
 	// FailurePolicy defines how unrecognized errors from the admission endpoint are handled -
-	// allowed values are Ignore or Fail. Defaults to Ignore.
+	// allowed values are Ignore or Fail. Defaults to Fail.
 	// +optional
 	FailurePolicy *FailurePolicyType `json:"failurePolicy,omitempty" protobuf:"bytes,4,opt,name=failurePolicy,casttype=FailurePolicyType"`
 
@@ -362,7 +341,7 @@ type MutatingWebhook struct {
 	// and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,
 	// a request to apps/v1beta1 or extensions/v1beta1 would be converted to apps/v1 and sent to the webhook.
 	//
-	// Defaults to "Exact"
+	// Defaults to "Equivalent"
 	// +optional
 	MatchPolicy *MatchPolicyType `json:"matchPolicy,omitempty" protobuf:"bytes,9,opt,name=matchPolicy,casttype=MatchPolicyType"`
 
@@ -427,19 +406,18 @@ type MutatingWebhook struct {
 	ObjectSelector *metav1.LabelSelector `json:"objectSelector,omitempty" protobuf:"bytes,11,opt,name=objectSelector"`
 
 	// SideEffects states whether this webhook has side effects.
-	// Acceptable values are: Unknown, None, Some, NoneOnDryRun
+	// Acceptable values are: None, NoneOnDryRun (webhooks created via v1beta1 may also specify Some or Unknown).
 	// Webhooks with side effects MUST implement a reconciliation system, since a request may be
 	// rejected by a future step in the admission chain and the side effects therefore need to be undone.
 	// Requests with the dryRun attribute will be auto-rejected if they match a webhook with
-	// sideEffects == Unknown or Some. Defaults to Unknown.
-	// +optional
-	SideEffects *SideEffectClass `json:"sideEffects,omitempty" protobuf:"bytes,6,opt,name=sideEffects,casttype=SideEffectClass"`
+	// sideEffects == Unknown or Some.
+	SideEffects *SideEffectClass `json:"sideEffects" protobuf:"bytes,6,opt,name=sideEffects,casttype=SideEffectClass"`
 
 	// TimeoutSeconds specifies the timeout for this webhook. After the timeout passes,
 	// the webhook call will be ignored or the API call will fail based on the
 	// failure policy.
 	// The timeout value must be between 1 and 30 seconds.
-	// Default to 30 seconds.
+	// Default to 10 seconds.
 	// +optional
 	TimeoutSeconds *int32 `json:"timeoutSeconds,omitempty" protobuf:"varint,7,opt,name=timeoutSeconds"`
 
@@ -450,9 +428,7 @@ type MutatingWebhook struct {
 	// If a persisted webhook configuration specifies allowed versions and does not
 	// include any versions known to the API Server, calls to the webhook will fail
 	// and be subject to the failure policy.
-	// Default to `['v1beta1']`.
-	// +optional
-	AdmissionReviewVersions []string `json:"admissionReviewVersions,omitempty" protobuf:"bytes,8,rep,name=admissionReviewVersions"`
+	AdmissionReviewVersions []string `json:"admissionReviewVersions" protobuf:"bytes,8,rep,name=admissionReviewVersions"`
 
 	// reinvocationPolicy indicates whether this webhook should be called multiple times as part of a single admission evaluation.
 	// Allowed values are "Never" and "IfNeeded".
