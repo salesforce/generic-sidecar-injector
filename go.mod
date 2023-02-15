@@ -8,7 +8,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.2.1
+	github.com/prometheus/client_golang v1.11.1
 	github.com/spf13/afero v1.2.2
 	github.com/stretchr/testify v1.6.1
 	gopkg.in/yaml.v2 v2.4.0
