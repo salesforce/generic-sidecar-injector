@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/salesforce/generic-sidecar-injector/pkg/extdataservice"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -88,6 +89,7 @@ type WebhookServer struct {
 	sidecarConfigTemplate *template.Template
 	mutatingConfig        *mutationconfig.MutationConfigs
 	certificateReloader   util.CertificateReloader
+	extDataClient         *extdataservice.ExtDataClient
 }
 
 // NewWebhookServer is a constructor for webhookServer
@@ -122,9 +124,30 @@ func (whsvr *WebhookServer) mutate(ar *v1.AdmissionReview) (admissionResponse *v
 	glog.Errorf("api=mutate, message=new AdmissionReview, Kind=%v, Namespace=%v, Name=%v (%v), UID=%v, patchOperation=%v, UserInfo=%v",
 		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
 
+	renderTemplateAnnotations := make(map[string]string)
+	for k, v := range pod.Annotations {
+		renderTemplateAnnotations[k] = v
+	}
+	if whsvr.extDataClient != nil {
+		extDataResponse, err := whsvr.extDataClient.FetchExtData(&extdataservice.ExtDataRequest{AdmissionReview: *ar})
+		if err != nil {
+			glog.Errorf("api=mutate, reason=extAnnotationClient, message=error fetching ext annotations, err=%v", err)
+			return &v1.AdmissionResponse{
+				Result: &metav1.Status{
+					Message: err.Error(),
+				},
+			}, nil
+		}
+		// Will override actual pod annotation if exists with same key
+		for k, v := range extDataResponse.Annotations {
+			renderTemplateAnnotations[k] = v
+		}
+	}
+
 	sidecarConfig, err := sidecarconfig.RenderTemplate(corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Annotations: pod.Annotations,
+			Labels:      pod.Labels,
+			Annotations: renderTemplateAnnotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: pod.Spec.ServiceAccountName,
@@ -312,6 +335,15 @@ func (whsvr *WebhookServer) Start() (chan bool, chan bool, error) {
 		TLSConfig: tlsConfig,
 	}
 	whsvr.tlsServer.Handler = router
+
+	if whsvr.config.ExtDataUrl != "" {
+		extDataClient, err := extdataservice.NewClient(whsvr.config.ExtDataUrl, tlsConfig)
+		if err != nil {
+			glog.Errorf("api=Start, reason=extdataservice.NewClient, url=%v, err=%v", whsvr.config.ExtDataUrl, err)
+			return nil, nil, errors.Errorf("api=Start, reason=extdataservice.NewClient, url=%v, err=%v", whsvr.config.ExtDataUrl, err)
+		}
+		whsvr.extDataClient = extDataClient
+	}
 
 	// Channel to indicate when the server stopped listening for some reason
 	doneListeningTLSChannel := make(chan bool)

@@ -23,6 +23,7 @@ type WebhookConfig struct {
 	CaFilePath         string `long:"ca-file-path" required:"false" description:"file containing the CA cert"`
 	SidecarConfigFile  string `long:"sidecar-config-file" required:"true" description:"file containing the sidecar container configuration"`
 	MutationConfigFile string `long:"mutation-config-file" required:"true" description:"file containing the mutation configuration"`
+	ExtDataUrl         string `long:"ext-annotation-gen" required:"false" description:"url for fetching external data"`
 	BuildInfoLabels    string `long:"build-info-labels" required:"false" description:"additional build info metric labels"`
 
 	// Flag to permit fallback to old, insecure TLS configurations.
